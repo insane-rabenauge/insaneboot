@@ -1,5 +1,5 @@
 insaneboot todo list 202307
 -> insaneboot y/n for each step on f8 boot
 -> rename file option
--> mcf5474 compatilibty
+-> mcf5474 compatibility
 -> remove m_strcpy, replace with bsr strcpy
