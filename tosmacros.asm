@@ -638,15 +638,6 @@ tos_setscreen macro	laddr,paddr,rez
 	trap	#14
 	lea	$c(sp),sp
 	endm
-tos_xbtimer macro	timer,control,data,vector
-	pea	\4
-	move.w	\3,-(sp)
-	move.w	\2,-(sp)
-	move.w	\1,-(sp)
-	move.w	#31,-(sp)
-	trap	#14
-	lea	$C(sp),sp
-	endm
 tos_xbtimerm macro	timer,control,data,vector
 	move.l	\4,-(sp)
 	move.w	\3,-(sp)
@@ -655,12 +646,6 @@ tos_xbtimerm macro	timer,control,data,vector
 	move.w	#31,-(sp)
 	trap	#14
 	lea	$C(sp),sp
-	endm
-tos_jenabint macro	number
-	move.w	\1,-(sp)
-	move.w	#27,-(sp)
-	trap	#14
-	addq.l	#4,sp
 	endm
 tos_fcreate	macro	fname,attr	;d0.l=handle
 	move.w	\2,-(sp)
