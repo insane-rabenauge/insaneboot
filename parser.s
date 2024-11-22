@@ -9,13 +9,22 @@ chktoken	macro   proc
 		endc
 		endm
 
+m_cmpb		macro
+	ifd	__mcoldfire__
+		move.b	\2,d5
+		cmp.b	\1,d5
+	else
+		cmp.b	\1,\2
+	endif
+		endm
+
 readconfig
 		tos_fsfirst	tmpfilename,#0
 		tst.l	d0
 		beq.s	.skipnotfound
 		lea	filename,a0
 		lea	tmpfilename,a1
-		m_strcpy a0,a1
+		bsr	strcpy
 		tos_fsfirst	tmpfilename,#0
 		tst.l	d0
 		beq.s	.skipnotfound
@@ -49,7 +58,7 @@ readconfig
 		add.l	configlen,a1
 		move.b	#$a,(a1)+
 		lea	tok_end,a0
-		m_strcpy a0,a1
+		bsr	strcpy
 		rts
 
 setdefaults
@@ -60,11 +69,20 @@ setdefaults
 		move.w	d0,menupos
 		move.w	d0,forcemenupos
 		move.w	d0,dorun
+	ifd	__mcoldfire__
+		move.w	#1,d5
+		move.w	d5,do_timeout
+	else
 		move.w	#1,do_timeout
+	endif
 		lea	menuptrs,a0
+	ifd	__mcoldfire__
+		move.l	#MAXITEMS-1,d1
+	else
 		move.w	#MAXITEMS-1,d1
+	endif
 .clrlp		move.l	d0,(a0)+
-		dbra	d1,.clrlp
+		m_dbra	d1,.clrlp
 		rts
 parseconfig
 parseloop
@@ -72,15 +90,30 @@ parseloop
 		bsr	cfg_readline
 		tst.w	configtxtdone
 		bne	parsedone
+	ifd	__mcoldfire__
+		move.b	(a0),d5
+		cmp.b	#";",d5	; skip comment lines
+		beq	.lp
+		cmp.b	#0,d5		; skip empty lines
+		beq	.lp
+		cmp.b	#".",d5
+	else
 		cmp.b	#";",(a0)	; skip comment lines
 		beq	.lp
 		cmp.b	#0,(a0)		; skip empty lines
 		beq	.lp
-		cmp.b	#".",(a0)	
+		cmp.b	#".",(a0)
+	endif
 		beq	parsecommands
 		bra	abortunknown
 parsedone
+	ifd	__mcoldfire__
+		moveq	#0,d4
+		move.w	dorun,d5
+		cmp.w	#DORUN_HELP,d5
+	else
 		cmp.w	#DORUN_HELP,dorun
+	endif
 		beq	.skipload
 		bsr	loadmenupos
 .skipload
@@ -88,18 +121,33 @@ parsedone
 		beq	.skipup
 		cmp.w	menupos,d4
 		bhi	.skipmax
-		subq	#1,d4
+	ifd	__mcoldfire__
+		subq.l	#1,d4
+	else
+		subq.w	#1,d4
+	endif
 		move.w	d4,menupos
 .skipmax
 		move.w	menucnt,d4
 		beq	.skipup
+	ifd	__mcoldfire__
+		m_mvzw	menupos,d5
+		sub.l	d5,d4
+		subq.l	#1,d4
+	else
 		sub.w	menupos,d4
-		subq	#1,d4
+		subq.w	#1,d4
+	endif
 .lpup		tos_cconws cur_up
-		dbra	d4,.lpup
+		m_dbra	d4,.lpup
 .skipup
 		tos_cconws v_selectch
+	ifd	__mcoldfire__
+		move.w	#DORUN_RUN,d5
+		move.w	d5,dorun
+	else
 		move.w	#DORUN_RUN,dorun
+	endif
 		rts
 
 abortunknown
@@ -128,6 +176,8 @@ parsecommands
 		chktoken item030
 		chktoken item040
 		chktoken item060
+		chktoken itemstc
+		chktoken itemstm
 		chktoken msg
 		chktoken msgln
 		chktoken ver
@@ -210,41 +260,63 @@ handle_default
 		bsr	cfg_getnum
 		tst.w	d0
 		beq	.done
+	ifd	__mcoldfire__
+		move.w	dorun,d5
+		cmp.w	#DORUN_HELP,d5
+	else
 		cmp.w	#DORUN_HELP,dorun
+	endif
 		beq	.done
-		subq	#1,d0
+	ifd	__mcoldfire__
+		subq.l	#1,d0
+	else
+		subq.w	#1,d0
+	endif
 		move.w	d0,menupos
 .done
 		bra	parseloop
 
 handle_item000
-		cmp.b	#000,c_cpu+3
+		m_cmpb	#000,c_cpu+3
 		bne	skipitem
 		bra	handle_item
 handle_item010
-		cmp.b	#010,c_cpu+3
+		m_cmpb	#010,c_cpu+3
 		bne	skipitem
 		bra	handle_item
 handle_item020
-		cmp.b	#020,c_cpu+3
+		m_cmpb	#020,c_cpu+3
 		bne	skipitem
 		bra	handle_item
 handle_item030
-		cmp.b	#030,c_cpu+3
+		m_cmpb	#030,c_cpu+3
 		bne	skipitem
 		bra	handle_item
 handle_item040
-		cmp.b	#040,c_cpu+3
+		m_cmpb	#040,c_cpu+3
 		bne	skipitem
 		bra	handle_item
 handle_item060
-		cmp.b	#060,c_cpu+3
+		m_cmpb	#060,c_cpu+3
+		bne	skipitem
+		bra	handle_item
+handle_itemstc
+		m_cmpb	#2,shiftres
+		beq	skipitem
+		bra	handle_item
+handle_itemstm
+		m_cmpb	#2,shiftres
 		bne	skipitem
 handle_item
 		subq.l	#1,a1
 		tos_cconwsm a1
 		tos_cconws msg_newline
+	ifd	__mcoldfire__
+		move.w	dorun,d5
+		cmp.w	#DORUN_HELP,d5
+	else
 		cmp.w	#DORUN_HELP,dorun
+	endif
 		beq	skipitem
 		move.w	menucnt,d0
 		bsr	indexptrs
@@ -252,14 +324,23 @@ handle_item
 		move.w	menucnt,d0
 		cmp.w	#MAXITEMS,d0
 		beq	abortunknown
+	ifd	__mcoldfire__
+		addq.l	#1,d0
+	else
 		addq.w	#1,d0
+	endif
 		move.w	d0,menucnt
 skipitem
 .lp
 		bsr	cfg_readline
 		tst.w	configtxtdone
 		bne	.done
+	ifd	__mcoldfire__
+		move.b	(a0),d5
+		cmp.b	#'.',d5
+	else
 		cmp.b	#'.',(a0)
+	endif
 		bne	.lp
 .done
 		bra	parsecommands
@@ -278,18 +359,29 @@ handle_ver
 		bra	parseloop
 
 handle_end
+	ifd	__mcoldfire__
+		move.w	#1,d5
+		move.w	d5,configtxtdone
+	else
 		move.w	#1,configtxtdone
+	endif
 		bra	parseloop
 
 indexptrs
 		lea	menuptrs,a0
+	ifd	__mcoldfire__
+		ext.l	d0
+		lsl.l	#2,d0
+		add.l	d0,a0
+	else
 		lsl.w	#2,d0
 		add.w	d0,a0
+	endif
 		rts
 
 cfg_getnum
 ;reads decimal number from a0 into d0
-		movem.l	a0/d1-d2,-(sp)
+		m_push	a0/d1-d2
 		moveq	#0,d0
 		moveq	#0,d1
 .lp		move.b	(a0)+,d1
@@ -303,11 +395,15 @@ cfg_getnum
 		add.l	d0,d0	;*2=*8,	4=32
 		add.l	d2,d0	;=*10	4=40
 ;		mulu.l	#10,d0
+	ifd	__mcoldfire__
+		and.l	#$f,d1
+	else
 		and.b	#$f,d1
+	endif
 		add.l	d1,d0
 		bra	.lp
 .done		
-		movem.l	(sp)+,a0/d1-d2
+		m_pop	a0/d1-d2
 		rts
 
 
@@ -317,9 +413,17 @@ cfg_gettoken
 ;a0=configtoken, updates configpos, modifies a1
 		move.l	cfglinepos,a1
 		lea	configtoken,a0
-.lp		cmp.b	#'"',(a1)
+.lp		
+	ifd	__mcoldfire__
+		move.b	(a1),d5
+		cmp.b	#'"',d5
+		beq	.copystring
+		cmp.b	#32,d5
+	else
+		cmp.b	#'"',(a1)
 		beq	.copystring
 		cmp.b	#32,(a1)
+	endif
 		bls	.done
 		move.b	(a1)+,(a0)+
 		bra	.lp
@@ -327,9 +431,16 @@ cfg_gettoken
 .copystring
 		addq	#1,a1
 .cslp
+	ifd	__mcoldfire__
+		move.b	(a1),d5
+		cmp.b	#0,d5
+		beq	.copydone
+		cmp.b	#'"',d5
+	else
 		cmp.b	#0,(a1)
 		beq	.copydone
 		cmp.b	#'"',(a1)
+	endif
 		beq	.copydoneskipend
 		move.b	(a1)+,(a0)+
 		bra	.cslp
@@ -340,17 +451,26 @@ cfg_gettoken
 		move.b	#0,(a0)
 		lea	configtoken,a0
 .removespaces
+	ifd	__mcoldfire__
+		move.b	(a1),d5
+		cmp.b	#0,d5
+		beq	.removespacesdone
+		cmp.b	#27,d5
+		beq	.removespacesdone
+		cmp.b	#32,d5
+	else
 		cmp.b	#0,(a1)
 		beq	.removespacesdone
 		cmp.b	#27,(a1)
 		beq	.removespacesdone
 		cmp.b	#32,(a1)
+	endif
 		bhi	.removespacesdone
 		addq	#1,a1
 		bra	.removespaces
 .removespacesdone
 		move.l	a1,cfglinepos
-		cmp.b	#0,(a0)
+		tst.b	(a0)
 		rts
 
 cfg_tokentoupper
@@ -360,7 +480,11 @@ cfg_tokentoupper
 		beq	.done
 		cmp.b   #$61,d0
 		blo     .skipupper
+	ifd	__mcoldfire__
+		eor.l   #$20,d0
+	else
 		eor.b   #$20,d0
+	endif
 .skipupper
 		move.b	d0,(a0)+
 		bra	.lp
@@ -376,6 +500,16 @@ cfg_readline
 		move.l	a1,configcurlinepos
 .lp		cmp.l	#configline+255,a0
 		beq	.done10
+	ifd	__mcoldfire__
+		move.b	(a1),d5
+		cmp.b	#0,d5
+		beq	.doneconfig
+		cmp.b	#13,d5
+		beq	.skip13
+		cmp.b	#10,d5
+		beq	.done10
+		cmp.b	#"^",d5
+	else
 		cmp.b	#0,(a1)
 		beq	.doneconfig
 		cmp.b	#13,(a1)
@@ -383,6 +517,7 @@ cfg_readline
 		cmp.b	#10,(a1)
 		beq	.done10
 		cmp.b	#"^",(a1)
+	endif
 		beq	.modesc
 		move.b	(a1)+,(a0)+
 		bra	.lp
@@ -391,7 +526,12 @@ cfg_readline
 		bra	.lp
 
 .doneconfig
+	ifd	__mcoldfire__
+		move.w	#1,d5
+		move.w	d5,configtxtdone
+	else
 		move.w	#1,configtxtdone
+	endif
 		bra	.done
 .done10		addq	#1,a1
 .done		move.b	#0,(a0)
@@ -401,17 +541,20 @@ cfg_readline
 		rts
 
 strcpy
-		movem.l	a0/a1,-(sp)
 .cp
 		move.b	(a0)+,(a1)+
 		bne	.cp
-		movem.l	(sp)+,a0/a1
 		rts
 
 strcmptok
 		lea	configtoken,a3
 .docmp
+	ifd	__mcoldfire__
+		move.b	(a3)+,d5
+		cmp.b	(a2)+,d5
+	else
 		cmp.b	(a2)+,(a3)+
+	endif
 		bne	.done
 		tst.b	-1(a2)
 		bne	.docmp
@@ -441,6 +584,8 @@ tok_item020		dc.b	".ITEM020",0
 tok_item030		dc.b	".ITEM030",0
 tok_item040		dc.b	".ITEM040",0
 tok_item060		dc.b	".ITEM060",0
+tok_itemstc		dc.b	".ITEMSTC",0
+tok_itemstm		dc.b	".ITEMSTM",0
 tok_end			dc.b	".END",0
 			even
 v_savelast		dc.b	1
@@ -456,6 +601,7 @@ v_selectch		dc.b	">",0
 c_mch			ds.l	1	;0x00030000=Falcon030 (compare hi-word only!)
 c_cpu			ds.l	1	;00=68000, 60=68060 etc.
 magxfound		ds.l	1
+shiftres		ds.w	1
 fhandle			ds.w	1
 configlen		ds.l	1
 configptr		ds.l	1

@@ -31,3 +31,7 @@ so you don't need to include them inside autoexec.cfg
 
 1.0 build 20200429
 - insaneBOOT opens menu.cfg if it exists in the same directory
+
+1.01 build 20241122
+- added itemstc and itemstm
+- added coldfire cf5474 build

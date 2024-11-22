@@ -18,7 +18,6 @@ savemenupos
 		pea	savemenupos_sup
 
 supexec_common
-;		pea	\1
 		move.w	#38,-(sp)
 		trap	#14
 		addq.l	#6,sp
@@ -38,16 +37,31 @@ getcookies_sup
 		move.l	#"MagX",d0
 		bsr	get_cookie
 		move.l	d0,magxfound
+	ifnd	__mcoldfire__
+		move.b	$ffff8260.w,d0
+		and.b	#%11,d0
+		move.b	d0,shiftres
+	endif
 		rts
 
 keyclickm_sup
 		move.b	v_keyclickm,d0
 keyclick
+	ifd	__mcoldfire__
+		move.w	ptr_conterm.w,d5
+		bset	#0,d5
+		tst.b	d0
+		bne	.skipclr
+		bclr	#0,d5
+.skipclr
+		move.w	d5,ptr_conterm.w
+	else
 		bset	#0,ptr_conterm.w
 		tst.b	d0
 		bne	.skipclr
 		bclr	#0,ptr_conterm.w
 .skipclr
+	endif
 		rts
 
 keyclickt_sup
@@ -55,6 +69,7 @@ keyclickt_sup
 		bra	keyclick
 
 dofpatch
+	ifnd	__mcoldfire__
 		tst.b	v_fpatch
 		beq	.skip
 		cmp.w	#3,c_mch
@@ -79,6 +94,7 @@ dofpatch
 		movem.l	(a0),d0-d5
 		movem.l	d0-d5,-(a0)	;copy Bconmap 7 over Bconmap 6
 .skip
+	endif
 		rts
 
 
@@ -86,7 +102,12 @@ loadmenupos_sup
 		tst.b	v_savelast
 		beq	.skip
 		lea	LOWRAM,a0
+	ifd	__mcoldfire__
+		move.l	(a0)+,d5
+		cmp.l	#"BOOT",d5
+	else
 		cmp.l	#"BOOT",(a0)+
+	endif
 		bne	.skip
 		moveq	#0,d0
 		move.b	(a0)+,d0

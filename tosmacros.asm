@@ -997,11 +997,53 @@ hcall	macro 	string
 	trap   	#14          ; Call XBIOS
 	addq.l 	#6,sp        ; Correct stack
 	endm
+m_mvzw	macro
+	if __VASM>256 ;CF
+	mvz.w	\1,\2
+	else
+	move.w	\1,\2
+	ext.l	\2
+	endif
+	endm
+m_dbra	macro
+	ifd	__mcoldfire__
+	subq.l	#1,\1
+	bpl	\2
+	else
+	dbra	\1,\2
+	endif
+	endm
+m_push	macro
+	ifd	__mcoldfire__
+	lea	-60(sp),sp
+	movem.l	\1,(sp)
+	else
+	movem.l	\1,-(sp)
+	endif
+	endm
 m_pusha	macro
+	ifd	__mcoldfire__
+	lea	-60(sp),sp
+	movem.l	d0-d7/a0-a6,(sp)
+	else
 	movem.l	d0-d7/a0-a6,-(sp)
+	endif
+	endm
+m_pop	macro
+	ifd	__mcoldfire__
+	movem.l	(sp),\1
+	lea	60(sp),sp
+	else
+	movem.l	(sp)+,\1
+	endif
 	endm
 m_popa	macro
+	ifd	__mcoldfire__
+	movem.l	(sp),d0-d7/a0-a6
+	lea	60(sp),sp
+	else
 	movem.l	(sp)+,d0-d7/a0-a6
+	endif
 	endm
 m_intsoff	macro
 	move.w	#$2700,sr

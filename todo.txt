@@ -1,5 +1,3 @@
-insaneboot todo list 202307
+insaneboot todo list 202411
 -> insaneboot y/n for each step on f8 boot
--> rename file option
--> mcf5474 compatibility
--> remove m_strcpy, replace with bsr strcpy
+-> flag system, set flag and start with .cont on next boot

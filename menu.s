@@ -21,7 +21,11 @@ domenu
 		move.l	d4,d7
 		sub.l	d6,d7
 		divu.w	#200,d7
+	ifd	__mcoldfire__
+		or.l	#$30,d7
+	else
 		or.w	#$30,d7
+	endif
 		cmp.w	#$39,d7
 		blt	.skipmod
 		move.w	#$39,d7
@@ -52,10 +56,19 @@ domenu
 		move.w	#$3b,d1
 		cmp.w	d1,d0
 		blo	.waitmenu
+	ifd	__mcoldfire__
+		m_mvzw	menucnt,d5
+		add.l	d5,d1
+	else
 		add.w	menucnt,d1
+	endif
 		cmp.w	d1,d0
 		bhs	.waitmenu
+	ifd	__mcoldfire__
+		sub.l	#$3a,d0
+	else
 		sub.w	#$3a,d0
+	endif
 		move.w	d0,forcemenupos
 .endmenu	bsr	savemenupos
 		tos_cconws cur_clr
@@ -63,14 +76,30 @@ domenu
 		rts
 .abortmenu	move.w	#DORUN_ABORT,dorun
 		rts
-.dohelp		move.w	#DORUN_HELP,dorun
+.dohelp
+	ifd	__mcoldfire__
+		move.w	#DORUN_HELP,d5
+		move.w	d5,dorun
+	else
+		move.w	#DORUN_HELP,dorun
+	endif
 		rts
 .dodn
 		move.w	menucnt,d0
-		subq	#1,d0
+	ifd	__mcoldfire__
+		subq.l	#1,d0
+	else
+		subq.w	#1,d0
+	endif
 		cmp.w	menupos,d0
 		bls	.waitmenu
+	ifd	__mcoldfire__
+		move.w	menupos,d5
+		addq.l	#1,d5
+		move.w	d5,menupos
+	else
 		add.w	#1,menupos
+	endif
 		tos_cconws cur_clr
 		tos_cconws cur_dn
 		tos_cconws v_selectch
@@ -78,7 +107,13 @@ domenu
 
 .doup		tst.w	menupos
 		beq	.waitmenu
+	ifd	__mcoldfire__
+		move.w	menupos,d5
+		subq.l	#1,d5
+		move.w	d5,menupos
+	else
 		sub.w	#1,menupos
+	endif
 		tos_cconws cur_clr
 		tos_cconws cur_up
 		tos_cconws v_selectch
